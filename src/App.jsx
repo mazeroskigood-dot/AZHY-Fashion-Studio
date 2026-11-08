@@ -1,648 +1,801 @@
 
 import React, { useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, ContactShadows } from "@react-three/drei";
+import {
+  OrbitControls,
+  Environment,
+  ContactShadows,
+} from "@react-three/drei";
 import "./App.css";
 
-type Category = "All" | "Men" | "Women" | "Kids";
-type Garment = "tshirt" | "hoodie" | "pants" | "dress" | "jacket";
-
-type Product = {
-  id: number;
-  name: string;
-  category: Exclude<Category, "All">;
-  type: Garment;
-  price: number;
-  color: string;
-  fabric: string;
-};
-
-const initialProducts: Product[] = [
-  { id: 1, name: "Premium Oversized Tee", category: "Men", type: "tshirt", price: 45, color: "#e8e0d2", fabric: "Cotton" },
-  { id: 2, name: "Luxury Street Hoodie", category: "Men", type: "hoodie", price: 89, color: "#222222", fabric: "Fleece" },
-  { id: 3, name: "Elegant Summer Dress", category: "Women", type: "dress", price: 120, color: "#bd8990", fabric: "Silk" },
-  { id: 4, name: "Classic Tailored Pants", category: "Men", type: "pants", price: 75, color: "#343c48", fabric: "Wool" },
-  { id: 5, name: "Modern Fashion Jacket", category: "Women", type: "jacket", price: 145, color: "#b6a48b", fabric: "Leather" },
-  { id: 6, name: "Kids Essential Tee", category: "Kids", type: "tshirt", price: 29, color: "#8ca8a0", fabric: "Cotton" }
+const initialProducts = [
+  { id: 1, name: "Essential Oversized T-Shirt", category: "T-Shirts", price: 35, color: "#d8cbb5", stock: 42 },
+  { id: 2, name: "Classic Tailored Jacket", category: "Jackets", price: 120, color: "#252525", stock: 18 },
+  { id: 3, name: "Premium Wide Leg Pants", category: "Pants", price: 75, color: "#77736b", stock: 27 },
+  { id: 4, name: "Modern Summer Dress", category: "Dresses", price: 95, color: "#c69d9d", stock: 13 },
 ];
 
 const fabrics = [
   { name: "Cotton", roughness: 0.9 },
   { name: "Silk", roughness: 0.25 },
-  { name: "Denim", roughness: 0.85 },
-  { name: "Leather", roughness: 0.4 },
+  { name: "Denim", roughness: 0.8 },
+  { name: "Linen", roughness: 1 },
+  { name: "Leather", roughness: 0.35 },
   { name: "Wool", roughness: 1 },
-  { name: "Linen", roughness: 0.95 },
-  { name: "Satin", roughness: 0.2 }
 ];
 
 const colors = [
-  "#111111", "#ffffff", "#d8c4a5", "#a52f36",
-  "#283c5b", "#6d826d", "#c18c9c", "#888888",
-  "#e0b65d", "#70513e", "#c8d4dc", "#673c70"
+  "#171717", "#f4f0e8", "#c6a15b", "#8b2929",
+  "#243b53", "#65745b", "#b7a19b", "#77736b",
+  "#d9c6a5", "#ffffff", "#6d536e", "#d28b50",
 ];
 
-function GarmentModel({
-  type,
-  color,
-  fabric
-}: {
-  type: Garment;
-  color: string;
-  fabric: string;
-}) {
-  const roughness = fabrics.find(f => f.name === fabric)?.roughness ?? 0.75;
-
+function GarmentModel({ garment, color, fabric, sleeve, collar, pockets }) {
   const material = useMemo(
-    () => ({ color, roughness, metalness: 0.02 }),
-    [color, roughness]
+    () => ({
+      color,
+      roughness: fabrics.find((item) => item.name === fabric)?.roughness ?? 0.8,
+      metalness: fabric === "Leather" ? 0.12 : 0,
+    }),
+    [color, fabric]
   );
 
+  const cloth = (position, scale, geometry = "box") => (
+    <mesh position={position} castShadow receiveShadow>
+      {geometry === "cylinder" ? (
+        <cylinderGeometry args={[scale[0], scale[1], scale[2], 32]} />
+      ) : (
+        <boxGeometry args={scale} />
+      )}
+      <meshStandardMaterial {...material} />
+    </mesh>
+  );
+
+  if (garment === "Pants") {
+    return (
+      <group position={[0, -0.15, 0]}>
+        {cloth([0, 0.48, 0], [0.9, 0.55, 0.3])}
+        {cloth([-0.24, -0.35, 0], [0.37, 1.15, 0.32])}
+        {cloth([0.24, -0.35, 0], [0.37, 1.15, 0.32])}
+        {cloth([0, 0.75, 0], [0.92, 0.12, 0.34])}
+        {pockets && cloth([-0.25, 0.45, 0.17], [0.22, 0.2, 0.025])}
+        {pockets && cloth([0.25, 0.45, 0.17], [0.22, 0.2, 0.025])}
+      </group>
+    );
+  }
+
+  if (garment === "Dress") {
+    return (
+      <group>
+        {cloth([0, 0.65, 0], [0.65, 0.85, 0.3])}
+        <mesh position={[0, -0.35, 0]} castShadow>
+          <cylinderGeometry args={[0.95, 1.25, 1.4, 48, 1, false]} />
+          <meshStandardMaterial {...material} side={2} />
+        </mesh>
+        {cloth([0, 1.15, 0], [0.38, 0.12, 0.34])}
+        {collar !== "None" && cloth([0, 1.22, 0.17], [0.5, 0.08, 0.08])}
+      </group>
+    );
+  }
+
+  if (garment === "Jacket") {
+    return (
+      <group>
+        {cloth([0, 0.3, 0], [1.05, 1.35, 0.42])}
+        {cloth([-0.72, 0.28, 0], [sleeve === "Short" ? 0.3 : 0.34, sleeve === "Short" ? 0.55 : 0.85, 0.35])}
+        {cloth([0.72, 0.28, 0], [sleeve === "Short" ? 0.3 : 0.34, sleeve === "Short" ? 0.55 : 0.85, 0.35])}
+        {cloth([0, -0.43, 0], [1.06, 0.1, 0.43])}
+        {collar !== "None" && cloth([0, 0.98, 0.23], [0.48, 0.2, 0.12])}
+        {pockets && cloth([-0.3, 0.15, 0.23], [0.25, 0.25, 0.04])}
+        {pockets && cloth([0.3, 0.15, 0.23], [0.25, 0.25, 0.04])}
+      </group>
+    );
+  }
+
   return (
-    <group position={[0, -0.05, 0]}>
-      {type === "tshirt" && (
-        <group>
-          <mesh position={[0, 0.45, 0]} castShadow material={undefined}>
-            <boxGeometry args={[0.95, 1.15, 0.22]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[-0.62, 0.75, 0]} rotation={[0, 0, 0.3]}>
-            <boxGeometry args={[0.42, 0.42, 0.22]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0.62, 0.75, 0]} rotation={[0, 0, -0.3]}>
-            <boxGeometry args={[0.42, 0.42, 0.22]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0, 1.06, 0.02]}>
-            <torusGeometry args={[0.16, 0.035, 12, 48]} />
-            <meshStandardMaterial color="#777777" roughness={0.8} />
-          </mesh>
-        </group>
-      )}
-
-      {type === "hoodie" && (
-        <group>
-          <mesh position={[0, 0.35, 0]}>
-            <boxGeometry args={[1.05, 1.15, 0.34]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0, 1.05, -0.02]}>
-            <sphereGeometry args={[0.35, 32, 32]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[-0.66, 0.65, 0]}>
-            <boxGeometry args={[0.34, 0.85, 0.3]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0.66, 0.65, 0]}>
-            <boxGeometry args={[0.34, 0.85, 0.3]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0, 0.15, 0.19]}>
-            <boxGeometry args={[0.65, 0.23, 0.04]} />
-            <meshStandardMaterial color="#777777" {...material} />
-          </mesh>
-        </group>
-      )}
-
-      {type === "pants" && (
-        <group>
-          <mesh position={[0, 0.75, 0]}>
-            <boxGeometry args={[0.85, 0.38, 0.2]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[-0.23, 0.05, 0]}>
-            <boxGeometry args={[0.37, 1.15, 0.22]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0.23, 0.05, 0]}>
-            <boxGeometry args={[0.37, 1.15, 0.22]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-        </group>
-      )}
-
-      {type === "dress" && (
-        <group>
-          <mesh position={[0, 0.65, 0]}>
-            <cylinderGeometry args={[0.28, 0.28, 0.65, 48]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0, -0.05, 0]}>
-            <cylinderGeometry args={[0.32, 0.85, 1.15, 64, 1, false]} />
-            <meshStandardMaterial {...material} side={2} />
-          </mesh>
-          <mesh position={[-0.4, 0.85, 0]}>
-            <boxGeometry args={[0.22, 0.65, 0.2]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0.4, 0.85, 0]}>
-            <boxGeometry args={[0.22, 0.65, 0.2]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-        </group>
-      )}
-
-      {type === "jacket" && (
-        <group>
-          <mesh position={[0, 0.35, 0]}>
-            <boxGeometry args={[1.05, 1.2, 0.3]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[-0.65, 0.55, 0]}>
-            <boxGeometry args={[0.32, 0.95, 0.28]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0.65, 0.55, 0]}>
-            <boxGeometry args={[0.32, 0.95, 0.28]} />
-            <meshStandardMaterial {...material} />
-          </mesh>
-          <mesh position={[0, 0.35, 0.16]}>
-            <boxGeometry args={[0.035, 1.1, 0.025]} />
-            <meshStandardMaterial color="#d0b06c" metalness={0.7} />
-          </mesh>
-        </group>
-      )}
+    <group>
+      {cloth([0, 0.3, 0], [1.05, 1.35, 0.38])}
+      {cloth([-0.72, 0.28, 0], [0.32, sleeve === "Short" ? 0.48 : 0.85, 0.34])}
+      {cloth([0.72, 0.28, 0], [0.32, sleeve === "Short" ? 0.48 : 0.85, 0.34])}
+      {cloth([0, -0.43, 0], [1.05, 0.1, 0.39])}
+      {collar !== "None" && cloth([0, 0.98, 0.2], [0.48, 0.18, 0.12])}
+      {pockets && cloth([0.3, 0.2, 0.2], [0.25, 0.25, 0.04])}
     </group>
   );
 }
 
-function FashionViewer({
-  type,
-  color,
-  fabric
-}: {
-  type: Garment;
-  color: string;
-  fabric: string;
-}) {
+function Studio({ garment, setGarment, color, setColor, fabric, setFabric }) {
+  const [sleeve, setSleeve] = useState("Long");
+  const [collar, setCollar] = useState("Classic");
+  const [pockets, setPockets] = useState(true);
+
   return (
-    <div className="fashion-canvas">
-      <Canvas shadows camera={{ position: [3, 2.5, 4], fov: 38 }}>
-        <color attach="background" args={["#f0eee9"]} />
-        <ambientLight intensity={1.2} />
-        <directionalLight position={[4, 6, 5]} intensity={2} castShadow />
-        <spotLight position={[-4, 4, -3]} intensity={1} />
-        <GarmentModel type={type} color={color} fabric={fabric} />
-        <ContactShadows position={[0, -1.1, 0]} opacity={0.3} scale={5} blur={2} />
-        <Environment preset="studio" />
-        <OrbitControls
-          enablePan={false}
-          minDistance={2}
-          maxDistance={8}
-          maxPolarAngle={Math.PI / 1.8}
-        />
-      </Canvas>
-      <div className="viewer-label">3D LIVE PREVIEW</div>
+    <div className="studio-layout">
+      <section className="studio-preview">
+        <div className="studio-preview-top">
+          <div>
+            <span className="eyebrow">3D DESIGN WORKSPACE</span>
+            <h2>Fashion Studio</h2>
+          </div>
+          <span className="live-label">● LIVE PREVIEW</span>
+        </div>
+
+        <div className="canvas-area">
+          <Canvas shadows camera={{ position: [3, 2.2, 4], fov: 38 }}>
+            <ambientLight intensity={1.1} />
+            <directionalLight
+              position={[4, 6, 5]}
+              intensity={2}
+              castShadow
+            />
+            <Environment preset="studio" />
+            <group position={[0, 0, 0]}>
+              <GarmentModel
+                garment={garment}
+                color={color}
+                fabric={fabric}
+                sleeve={sleeve}
+                collar={collar}
+                pockets={pockets}
+              />
+            </group>
+            <ContactShadows
+              position={[0, -1.25, 0]}
+              opacity={0.3}
+              scale={5}
+              blur={2}
+            />
+            <OrbitControls
+              enablePan={false}
+              minDistance={3}
+              maxDistance={7}
+            />
+          </Canvas>
+          <div className="canvas-hint">Drag to rotate · Scroll to zoom</div>
+        </div>
+
+        <div className="preview-footer">
+          <span>AZHY 3D GARMENT ENGINE</span>
+          <span>360° VIEW</span>
+        </div>
+      </section>
+
+      <aside className="studio-controls">
+        <div className="control-heading">
+          <span className="eyebrow">CUSTOMIZE</span>
+          <h3>Design details</h3>
+        </div>
+
+        <label className="field-label">Garment type</label>
+        <div className="garment-options">
+          {["T-Shirt", "Jacket", "Pants", "Dress"].map((item) => (
+            <button
+              key={item}
+              className={garment === item ? "choice active" : "choice"}
+              onClick={() => setGarment(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+
+        <label className="field-label">Color palette</label>
+        <div className="color-options">
+          {colors.map((item) => (
+            <button
+              key={item}
+              aria-label={`Choose ${item}`}
+              className={color === item ? "color-dot selected" : "color-dot"}
+              style={{ background: item }}
+              onClick={() => setColor(item)}
+            />
+          ))}
+        </div>
+
+        <label className="field-label">Fabric material</label>
+        <select
+          className="studio-select"
+          value={fabric}
+          onChange={(event) => setFabric(event.target.value)}
+        >
+          {fabrics.map((item) => (
+            <option key={item.name}>{item.name}</option>
+          ))}
+        </select>
+
+        <label className="field-label">Sleeve length</label>
+        <div className="garment-options">
+          {["Short", "Long"].map((item) => (
+            <button
+              key={item}
+              className={sleeve === item ? "choice active" : "choice"}
+              onClick={() => setSleeve(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+
+        <label className="field-label">Collar style</label>
+        <select
+          className="studio-select"
+          value={collar}
+          onChange={(event) => setCollar(event.target.value)}
+        >
+          <option>Classic</option>
+          <option>Modern</option>
+          <option>None</option>
+        </select>
+
+        <label className="toggle-row">
+          <span>Pockets</span>
+          <input
+            type="checkbox"
+            checked={pockets}
+            onChange={(event) => setPockets(event.target.checked)}
+          />
+        </label>
+
+        <button
+          className="primary-button full-button"
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent("azhy-save-design", {
+                detail: { garment, color, fabric, sleeve, collar, pockets },
+              })
+            )
+          }
+        >
+          Save design
+        </button>
+      </aside>
     </div>
   );
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState("Dashboard");
-  const [category, setCategory] = useState<Category>("All");
+  const [activePage, setActivePage] = useState("Dashboard");
+  const [garment, setGarment] = useState("T-Shirt");
+  const [color, setColor] = useState("#d8cbb5");
+  const [fabric, setFabric] = useState("Cotton");
+  const [products, setProducts] = useState(() => {
+    try {
+      const saved = localStorage.getItem("azhy-products");
+      return saved ? JSON.parse(saved) : initialProducts;
+    } catch {
+      return initialProducts;
+    }
+  });
+  const [designs, setDesigns] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("azhy-designs") || "[]");
+    } catch {
+      return [];
+    }
+  });
   const [search, setSearch] = useState("");
-  const [products, setProducts] = useState(initialProducts);
-  const [selectedType, setSelectedType] = useState<Garment>("tshirt");
-  const [selectedColor, setSelectedColor] = useState("#d8c4a5");
-  const [selectedFabric, setSelectedFabric] = useState("Cotton");
-  const [designName, setDesignName] = useState("My New Collection");
-  const [savedDesigns, setSavedDesigns] = useState<string[]>([]);
-  const [cart, setCart] = useState<Product[]>([]);
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const [newProductName, setNewProductName] = useState("");
-  const [newProductPrice, setNewProductPrice] = useState("50");
-
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = category === "All" || product.category === category;
-    const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: "",
+    category: "T-Shirts",
+    price: "",
+    stock: "",
+    color: "#c6a15b",
   });
 
-  const totalRevenue = products.reduce((sum, product) => sum + product.price, 0);
-
-  const saveDesign = () => {
-    if (!designName.trim()) return;
-    setSavedDesigns(previous => [...previous, designName]);
-  };
-
-  const addProduct = () => {
-    if (!newProductName.trim()) return;
-
-    const product: Product = {
-      id: Date.now(),
-      name: newProductName,
-      category: "Men",
-      type: selectedType,
-      price: Math.max(0, Number(newProductPrice) || 0),
-      color: selectedColor,
-      fabric: selectedFabric
+  React.useEffect(() => {
+    const saveDesign = (event) => {
+      const next = [
+        {
+          id: Date.now(),
+          name: `${event.detail.garment} Design`,
+          date: new Date().toLocaleDateString(),
+          ...event.detail,
+        },
+        ...designs,
+      ];
+      setDesigns(next);
+      localStorage.setItem("azhy-designs", JSON.stringify(next));
     };
 
-    setProducts(previous => [product, ...previous]);
-    setNewProductName("");
-    setNewProductPrice("50");
-    setShowAddProduct(false);
+    window.addEventListener("azhy-save-design", saveDesign);
+    return () => window.removeEventListener("azhy-save-design", saveDesign);
+  }, [designs]);
+
+  const saveProducts = (next) => {
+    setProducts(next);
+    localStorage.setItem("azhy-products", JSON.stringify(next));
   };
 
-  const menuItems = [
-    { name: "Dashboard", icon: "◫" },
-    { name: "3D Studio", icon: "✧" },
-    { name: "Collections", icon: "▤" },
-    { name: "Products", icon: "◇" },
-    { name: "Orders", icon: "▣" },
-    { name: "Customers", icon: "♙" },
-    { name: "Inventory", icon: "▥" },
-    { name: "Analytics", icon: "▰" },
-    { name: "Settings", icon: "⚙" }
+  const navGroups = [
+    {
+      title: "WORKSPACE",
+      items: [
+        ["Dashboard", "⌂"],
+        ["3D Studio", "◇"],
+        ["Collections", "▦"],
+        ["Products", "◈"],
+      ],
+    },
+    {
+      title: "BUSINESS",
+      items: [
+        ["Orders", "▤"],
+        ["Customers", "♙"],
+        ["Inventory", "▥"],
+        ["Analytics", "⌁"],
+      ],
+    },
+    {
+      title: "PREFERENCES",
+      items: [["Settings", "⚙"]],
+    },
   ];
 
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const pageTitle = activePage === "3D Studio" ? "Fashion Studio" : activePage;
+
+  function addProduct(event) {
+    event.preventDefault();
+    if (!newProduct.name.trim()) return;
+
+    const next = [
+      {
+        ...newProduct,
+        id: Date.now(),
+        price: Number(newProduct.price) || 0,
+        stock: Number(newProduct.stock) || 0,
+      },
+      ...products,
+    ];
+
+    saveProducts(next);
+    setNewProduct({
+      name: "",
+      category: "T-Shirts",
+      price: "",
+      stock: "",
+      color: "#c6a15b",
+    });
+    setShowProductForm(false);
+  }
+
+  function deleteProduct(id) {
+    saveProducts(products.filter((product) => product.id !== id));
+  }
+
   return (
-    <div className="azhy-app">
+    <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">A</div>
+          <div className="brand-symbol">A</div>
           <div>
-            <h2>AZHY</h2>
+            <h1>AZHY</h1>
             <span>FASHION STUDIO</span>
           </div>
         </div>
 
-        <div className="workspace-label">WORKSPACE</div>
+        <div className="workspace-label">MAIN MENU</div>
 
-        <nav className="sidebar-nav">
-          {menuItems.map(item => (
-            <button
-              key={item.name}
-              className={`nav-item ${activeTab === item.name ? "active" : ""}`}
-              onClick={() => setActiveTab(item.name)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {item.name}
-              {item.name === "Orders" && <span className="nav-count">3</span>}
-            </button>
-          ))}
-        </nav>
+        {navGroups.map((group) => (
+          <div className="nav-group" key={group.title}>
+            <div className="nav-caption">{group.title}</div>
+            {group.items.map(([name, icon]) => (
+              <button
+                key={name}
+                className={activePage === name ? "nav-item active" : "nav-item"}
+                onClick={() => setActivePage(name)}
+              >
+                <span className="nav-icon">{icon}</span>
+                <span>{name}</span>
+                {name === "3D Studio" && <span className="nav-new">3D</span>}
+              </button>
+            ))}
+          </div>
+        ))}
 
         <div className="sidebar-bottom">
-          <div className="upgrade-card">
-            <div className="upgrade-icon">✦</div>
-            <strong>AZHY PRO</strong>
-            <p>Unlock your creative potential.</p>
-            <button onClick={() => setActiveTab("Settings")}>Explore features ↗</button>
+          <div className="profile-avatar">A</div>
+          <div className="profile-info">
+            <strong>Studio Owner</strong>
+            <span>Administrator</span>
           </div>
-          <div className="profile">
-            <div className="avatar">A</div>
-            <div>
-              <strong>Studio Owner</strong>
-              <span>Administrator</span>
-            </div>
-            <span className="profile-dots">•••</span>
-          </div>
+          <span className="profile-menu">•••</span>
         </div>
       </aside>
 
-      <main className="main-content">
+      <main className="main-area">
         <header className="topbar">
           <div className="breadcrumb">
             <span>AZHY</span>
-            <span>/</span>
-            <strong>{activeTab}</strong>
+            <span className="breadcrumb-separator">/</span>
+            <strong>{pageTitle}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="system-status"><i /> Studio Online</span>
-            <button className="icon-button" aria-label="Notifications">♧</button>
-            <button className="language-button">EN / AR</button>
+            <span className="topbar-date">
+              {new Date().toLocaleDateString()}
+            </span>
+            <button className="notification-button" aria-label="Notifications">
+              ♧
+            </button>
+            <div className="topbar-avatar">A</div>
           </div>
         </header>
 
-        {activeTab === "Dashboard" && (
-          <section className="page">
-            <div className="welcome-row">
-              <div>
-                <span className="eyebrow">YOUR CREATIVE WORLD</span>
-                <h1>Welcome to <span>AZHY.</span></h1>
-                <p>Design beautifully. Create fearlessly. Build your fashion empire.</p>
+        <div className="page-content">
+          {activePage === "Dashboard" && (
+            <>
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow">YOUR CREATIVE BUSINESS</span>
+                  <h2>Welcome to AZHY Studio</h2>
+                  <p>Your fashion business, beautifully organized.</p>
+                </div>
+                <button
+                  className="primary-button"
+                  onClick={() => setActivePage("3D Studio")}
+                >
+                  + Create new design
+                </button>
               </div>
-              <button className="gold-button" onClick={() => setActiveTab("3D Studio")}>
-                ✦ Create New Design
-              </button>
-            </div>
 
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span>Total Products</span>
-                <strong>{products.length.toString().padStart(2, "0")}</strong>
-                <small>Available in studio</small>
-              </div>
-              <div className="stat-card">
-                <span>Saved Designs</span>
-                <strong>{savedDesigns.length.toString().padStart(2, "0")}</strong>
-                <small>Your creative library</small>
-              </div>
-              <div className="stat-card">
-                <span>Cart Items</span>
-                <strong>{cart.length.toString().padStart(2, "0")}</strong>
-                <small>Current shopping cart</small>
-              </div>
-              <div className="stat-card">
-                <span>Product Value</span>
-                <strong>${totalRevenue.toLocaleString()}</strong>
-                <small>Combined listed prices</small>
-              </div>
-            </div>
-
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">CREATIVE WORKSPACE</span>
-                <h2>Explore Your Studio</h2>
-              </div>
-              <span className="subtle-text">DESIGNED FOR CREATORS</span>
-            </div>
-
-            <div className="feature-grid">
-              <button className="feature-card studio-feature" onClick={() => setActiveTab("3D Studio")}>
-                <div className="feature-symbol">✧</div>
-                <span>01 / DESIGN</span>
-                <h3>3D Fashion Studio</h3>
-                <p>Bring your clothing concepts to life in an interactive 3D workspace.</p>
-                <b>Open Studio ↗</b>
-              </button>
-              <button className="feature-card collection-feature" onClick={() => setActiveTab("Collections")}>
-                <div className="feature-symbol">◇</div>
-                <span>02 / CURATE</span>
-                <h3>Collections</h3>
-                <p>Organize your ideas and build your next signature collection.</p>
-                <b>Explore Collections ↗</b>
-              </button>
-              <button className="feature-card product-feature" onClick={() => setActiveTab("Products")}>
-                <div className="feature-symbol">▤</div>
-                <span>03 / MANAGE</span>
-                <h3>Product Library</h3>
-                <p>Manage your fashion products, materials and pricing.</p>
-                <b>View Products ↗</b>
-              </button>
-            </div>
-
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">LATEST ADDITIONS</span>
-                <h2>Featured Products</h2>
-              </div>
-              <button className="text-button" onClick={() => setActiveTab("Products")}>View All →</button>
-            </div>
-
-            <div className="product-grid">
-              {products.slice(0, 3).map(product => (
-                <ProductCard key={product.id} product={product} onAdd={() => setCart(previous => [...previous, product])} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {activeTab === "3D Studio" && (
-          <section className="page">
-            <div className="welcome-row">
-              <div>
-                <span className="eyebrow">DESIGN WITHOUT LIMITS</span>
-                <h1>3D <span>Fashion Studio.</span></h1>
-                <p>Create, customize and preview your fashion ideas.</p>
-              </div>
-              <button className="gold-button" onClick={saveDesign}>Save Design ♧</button>
-            </div>
-
-            <div className="studio-layout">
-              <div className="studio-preview">
-                <div className="panel-heading">
-                  <div>
-                    <strong>Interactive 3D Preview</strong>
-                    <span>Rotate and explore your garment</span>
+              <div className="stats-grid">
+                {[
+                  ["Total Products", products.length, "In your catalog", "◈"],
+                  ["Saved Designs", designs.length, "Your creative ideas", "◇"],
+                  ["Total Stock", products.reduce((sum, p) => sum + p.stock, 0), "Units available", "▥"],
+                  ["Categories", new Set(products.map((p) => p.category)).size, "Product categories", "▦"],
+                ].map(([label, value, note, icon]) => (
+                  <div className="stat-card" key={label}>
+                    <div className="stat-top">
+                      <span>{label}</span>
+                      <span className="stat-icon">{icon}</span>
+                    </div>
+                    <strong>{value}</strong>
+                    <small>{note}</small>
                   </div>
-                  <span className="live-tag">● LIVE</span>
-                </div>
-                <FashionViewer type={selectedType} color={selectedColor} fabric={selectedFabric} />
-                <div className="viewer-footer">
-                  <span>AZHY 3D ENGINE</span>
-                  <span>DRAG TO ROTATE · SCROLL TO ZOOM</span>
-                </div>
-              </div>
-
-              <div className="design-controls">
-                <div className="control-heading">
-                  <span className="eyebrow">CUSTOMIZATION</span>
-                  <h2>Design Settings</h2>
-                </div>
-
-                <label className="field-label">Design Name</label>
-                <input className="studio-input" value={designName} onChange={e => setDesignName(e.target.value)} />
-
-                <label className="field-label">Garment Type</label>
-                <div className="garment-options">
-                  {([
-                    ["tshirt", "T-Shirt"],
-                    ["hoodie", "Hoodie"],
-                    ["pants", "Pants"],
-                    ["dress", "Dress"],
-                    ["jacket", "Jacket"]
-                  ] as [Garment, string][]).map(([type, label]) => (
-                    <button key={type} className={selectedType === type ? "garment-option selected" : "garment-option"} onClick={() => setSelectedType(type)}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                <label className="field-label">Color Palette</label>
-                <div className="color-palette">
-                  {colors.map(color => (
-                    <button
-                      key={color}
-                      aria-label={`Select ${color}`}
-                      className={selectedColor === color ? "color-swatch selected" : "color-swatch"}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setSelectedColor(color)}
-                    />
-                  ))}
-                </div>
-
-                <label className="field-label">Fabric Material</label>
-                <select className="studio-input" value={selectedFabric} onChange={e => setSelectedFabric(e.target.value)}>
-                  {fabrics.map(fabric => <option key={fabric.name}>{fabric.name}</option>)}
-                </select>
-
-                <div className="material-preview">
-                  <span>SELECTED MATERIAL</span>
-                  <strong>{selectedFabric}</strong>
-                  <p>Material appearance updates with your selection.</p>
-                </div>
-
-                <button className="gold-button full-button" onClick={saveDesign}>Save My Design ✦</button>
-                {savedDesigns.includes(designName) && (
-                  <p className="success-message">Design saved in this session.</p>
-                )}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {activeTab === "Products" && (
-          <section className="page">
-            <div className="welcome-row">
-              <div>
-                <span className="eyebrow">YOUR FASHION CATALOG</span>
-                <h1>Product <span>Library.</span></h1>
-                <p>Discover and manage your fashion products.</p>
-              </div>
-              <button className="gold-button" onClick={() => setShowAddProduct(!showAddProduct)}>+ Add Product</button>
-            </div>
-
-            {showAddProduct && (
-              <div className="add-product-panel">
-                <h3>Create New Product</h3>
-                <input className="studio-input" placeholder="Product name" value={newProductName} onChange={e => setNewProductName(e.target.value)} />
-                <input className="studio-input" type="number" placeholder="Price" value={newProductPrice} onChange={e => setNewProductPrice(e.target.value)} />
-                <button className="gold-button" onClick={addProduct}>Add to Library</button>
-              </div>
-            )}
-
-            <div className="product-toolbar">
-              <input className="search-input" placeholder="Search products..." value={search} onChange={e => setSearch(e.target.value)} />
-              <div className="category-filters">
-                {(["All", "Men", "Women", "Kids"] as Category[]).map(item => (
-                  <button key={item} className={category === item ? "filter-button active" : "filter-button"} onClick={() => setCategory(item)}>{item}</button>
                 ))}
               </div>
-            </div>
 
-            <div className="product-grid">
-              {filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} onAdd={() => setCart(previous => [...previous, product])} />
-              ))}
-            </div>
-            {filteredProducts.length === 0 && <p className="empty-message">No products found.</p>}
-          </section>
-        )}
-
-        {activeTab === "Collections" && (
-          <section className="page">
-            <span className="eyebrow">YOUR CREATIVE ARCHIVE</span>
-            <h1>My <span>Collections.</span></h1>
-            <p className="page-description">Your saved fashion concepts.</p>
-            <div className="saved-grid">
-              {savedDesigns.map((design, index) => (
-                <div className="saved-card" key={`${design}-${index}`}>
-                  <span>✧ DESIGN {index + 1}</span>
-                  <h3>{design}</h3>
-                  <p>Created in AZHY Fashion Studio</p>
+              <section className="welcome-banner">
+                <div>
+                  <span className="eyebrow">DESIGN WITHOUT LIMITS</span>
+                  <h2>Turn your imagination<br />into fashion.</h2>
+                  <p>Create, customize and organize your next collection.</p>
+                  <button
+                    className="light-button"
+                    onClick={() => setActivePage("3D Studio")}
+                  >
+                    Open 3D Studio →
+                  </button>
                 </div>
-              ))}
-              {savedDesigns.length === 0 && (
-                <div className="empty-state">
-                  <span>✧</span>
-                  <h2>Your creative journey starts here.</h2>
-                  <p>Save your first design in the 3D Studio.</p>
-                  <button className="gold-button" onClick={() => setActiveTab("3D Studio")}>Start Designing</button>
+                <div className="banner-decoration">
+                  <div className="banner-circle">A</div>
+                  <span>AZHY<br />ATELIER</span>
+                </div>
+              </section>
+
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">YOUR CATALOG</span>
+                  <h3>Recent products</h3>
+                </div>
+                <button className="text-button" onClick={() => setActivePage("Products")}>
+                  View all →
+                </button>
+              </div>
+
+              <div className="product-grid">
+                {products.slice(0, 4).map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {activePage === "3D Studio" && (
+            <div>
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow">CREATE YOUR NEXT COLLECTION</span>
+                  <h2>3D Fashion Designer</h2>
+                  <p>Customize your garment and explore your design.</p>
+                </div>
+              </div>
+              <Studio
+                garment={garment}
+                setGarment={setGarment}
+                color={color}
+                setColor={setColor}
+                fabric={fabric}
+                setFabric={setFabric}
+              />
+            </div>
+          )}
+
+          {activePage === "Products" && (
+            <>
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow">PRODUCT MANAGEMENT</span>
+                  <h2>Products</h2>
+                  <p>Manage your fashion catalog.</p>
+                </div>
+                <button
+                  className="primary-button"
+                  onClick={() => setShowProductForm(!showProductForm)}
+                >
+                  + Add product
+                </button>
+              </div>
+
+              {showProductForm && (
+                <form className="product-form" onSubmit={addProduct}>
+                  <h3>Add a new product</h3>
+                  <input
+                    required
+                    placeholder="Product name"
+                    value={newProduct.name}
+                    onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                  />
+                  <select
+                    value={newProduct.category}
+                    onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                  >
+                    {["T-Shirts", "Jackets", "Pants", "Dresses", "Accessories"].map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Price"
+                    value={newProduct.price}
+                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Stock quantity"
+                    value={newProduct.stock}
+                    onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
+                  />
+                  <button className="primary-button" type="submit">Save product</button>
+                </form>
+              )}
+
+              <div className="table-toolbar">
+                <input
+                  className="search-input"
+                  placeholder="Search products..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <span>{filteredProducts.length} products</span>
+              </div>
+
+              <div className="data-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>PRODUCT</th>
+                      <th>CATEGORY</th>
+                      <th>PRICE</th>
+                      <th>STOCK</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.map((product) => (
+                      <tr key={product.id}>
+                        <td>
+                          <div className="table-product">
+                            <span
+                              className="product-swatch"
+                              style={{ background: product.color }}
+                            />
+                            <strong>{product.name}</strong>
+                          </div>
+                        </td>
+                        <td>{product.category}</td>
+                        <td>${product.price}</td>
+                        <td>{product.stock}</td>
+                        <td>
+                          <button
+                            className="delete-button"
+                            onClick={() => deleteProduct(product.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {activePage === "Collections" && (
+            <PageSection
+              eyebrow="CREATIVE LIBRARY"
+              title="Collections"
+              description="Your saved designs and creative projects."
+            >
+              {designs.length === 0 ? (
+                <EmptyState
+                  title="No saved designs yet"
+                  description="Start creating in the 3D Studio and save your first design."
+                  action={() => setActivePage("3D Studio")}
+                />
+              ) : (
+                <div className="product-grid">
+                  {designs.map((design) => (
+                    <div className="design-card" key={design.id}>
+                      <div
+                        className="design-color"
+                        style={{ background: design.color }}
+                      />
+                      <div className="design-card-info">
+                        <strong>{design.name}</strong>
+                        <span>{design.fabric} · {design.date}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
-            </div>
-          </section>
-        )}
+            </PageSection>
+          )}
 
-        {activeTab === "Orders" && (
-          <section className="page">
-            <span className="eyebrow">COMMERCE MANAGEMENT</span>
-            <h1>My <span>Orders.</span></h1>
-            <div className="empty-state">
-              <span>▣</span>
-              <h2>Order Management</h2>
-              <p>Your order management workspace is ready for integration.</p>
-            </div>
-          </section>
-        )}
+          {activePage === "Orders" && (
+            <PageSection
+              eyebrow="SALES MANAGEMENT"
+              title="Orders"
+              description="Track and organize customer orders."
+            >
+              <EmptyState
+                title="No orders yet"
+                description="Your orders will appear here when you add an order management workflow."
+              />
+            </PageSection>
+          )}
 
-        {activeTab === "Customers" && (
-          <section className="page">
-            <span className="eyebrow">RELATIONSHIP MANAGEMENT</span>
-            <h1>My <span>Customers.</span></h1>
-            <div className="empty-state">
-              <span>♙</span>
-              <h2>Customer Workspace</h2>
-              <p>Customer records and profiles will appear here.</p>
-            </div>
-          </section>
-        )}
+          {activePage === "Customers" && (
+            <PageSection
+              eyebrow="CUSTOMER RELATIONSHIPS"
+              title="Customers"
+              description="Your customer directory."
+            >
+              <EmptyState
+                title="Your customer list is empty"
+                description="Customer records can be added when customer management is connected."
+              />
+            </PageSection>
+          )}
 
-        {activeTab === "Inventory" && (
-          <section className="page">
-            <span className="eyebrow">STOCK MANAGEMENT</span>
-            <h1>My <span>Inventory.</span></h1>
-            <div className="empty-state">
-              <span>▥</span>
-              <h2>Inventory Workspace</h2>
-              <p>Manage your materials and stock in one place.</p>
-            </div>
-          </section>
-        )}
+          {activePage === "Inventory" && (
+            <PageSection
+              eyebrow="STOCK CONTROL"
+              title="Inventory"
+              description="Monitor product quantities and availability."
+            >
+              <div className="data-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr><th>PRODUCT</th><th>CATEGORY</th><th>QUANTITY</th><th>STATUS</th></tr>
+                  </thead>
+                  <tbody>
+                    {products.map((product) => (
+                      <tr key={product.id}>
+                        <td>{product.name}</td>
+                        <td>{product.category}</td>
+                        <td>{product.stock}</td>
+                        <td>
+                          <span className={product.stock < 15 ? "status low" : "status available"}>
+                            {product.stock < 15 ? "Low stock" : "Available"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </PageSection>
+          )}
 
-        {activeTab === "Analytics" && (
-          <section className="page">
-            <span className="eyebrow">BUSINESS INTELLIGENCE</span>
-            <h1>Studio <span>Analytics.</span></h1>
-            <div className="stats-grid">
-              <div className="stat-card"><span>Products</span><strong>{products.length}</strong></div>
-              <div className="stat-card"><span>Saved Designs</span><strong>{savedDesigns.length}</strong></div>
-              <div className="stat-card"><span>Cart Items</span><strong>{cart.length}</strong></div>
-              <div className="stat-card"><span>Catalog Value</span><strong>${totalRevenue}</strong></div>
-            </div>
-          </section>
-        )}
+          {activePage === "Analytics" && (
+            <PageSection
+              eyebrow="BUSINESS OVERVIEW"
+              title="Analytics"
+              description="A quick overview of your current catalog."
+            >
+              <div className="stats-grid">
+                <div className="stat-card"><span>Total products</span><strong>{products.length}</strong><small>Catalog items</small></div>
+                <div className="stat-card"><span>Saved designs</span><strong>{designs.length}</strong><small>Creative projects</small></div>
+                <div className="stat-card"><span>Total stock</span><strong>{products.reduce((sum, p) => sum + p.stock, 0)}</strong><small>Units available</small></div>
+                <div className="stat-card"><span>Catalog value</span><strong>${products.reduce((sum, p) => sum + p.price * p.stock, 0).toLocaleString()}</strong><small>Estimated retail value</small></div>
+              </div>
+            </PageSection>
+          )}
 
-        {activeTab === "Settings" && (
-          <section className="page">
-            <span className="eyebrow">PERSONALIZE YOUR WORKSPACE</span>
-            <h1>Studio <span>Settings.</span></h1>
-            <div className="settings-card">
-              <h3>AZHY Fashion Studio</h3>
-              <p>Version 1.0 · Creative Workspace</p>
-              <p>Interface language: English</p>
-              <p>Theme: Luxury Dark</p>
-            </div>
-          </section>
-        )}
+          {activePage === "Settings" && (
+            <PageSection
+              eyebrow="STUDIO PREFERENCES"
+              title="Settings"
+              description="Basic information about your workspace."
+            >
+              <div className="settings-card">
+                <div className="settings-mark">A</div>
+                <div>
+                  <h3>AZHY Fashion Studio</h3>
+                  <p>Premium fashion design workspace</p>
+                  <span className="status available">Workspace active</span>
+                </div>
+              </div>
+            </PageSection>
+          )}
+        </div>
 
-        <footer className="footer">
-          <span>© 2026 AZHY FASHION STUDIO</span>
-          <span>CRAFTED FOR THE FUTURE OF FASHION ✦</span>
+        <footer className="app-footer">
+          <span>© {new Date().getFullYear()} AZHY Fashion Studio</span>
+          <span>Designed for creativity.</span>
         </footer>
       </main>
     </div>
   );
 }
 
-function ProductCard({
-  product,
-  onAdd
-}: {
-  product: Product;
-  onAdd: () => void;
-}) {
+function ProductCard({ product }) {
   return (
     <article className="product-card">
-      <div className="product-visual" style={{ backgroundColor: "#f0eee9" }}>
-        <div className="product-silhouette" style={{ backgroundColor: product.color }}>
-          <span>{product.type.toUpperCase()}</span>
-        </div>
+      <div
+        className="product-art"
+        style={{ background: `linear-gradient(145deg, ${product.color}55, #eeeae2)` }}
+      >
+        <div className="product-art-shape" style={{ background: product.color }} />
         <span className="product-category">{product.category}</span>
       </div>
-      <div className="product-info">
-        <span>{product.fabric} COLLECTION</span>
-        <h3>{product.name}</h3>
-        <div className="product-bottom">
-          <strong>${product.price}</strong>
-          <button onClick={onAdd}>Add to Cart +</button>
+      <div className="product-card-info">
+        <strong>{product.name}</strong>
+        <div>
+          <span>${product.price}</span>
+          <small>{product.stock} in stock</small>
         </div>
       </div>
     </article>
+  );
+}
+
+function PageSection({ eyebrow, title, description, children }) {
+  return (
+    <section>
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">{eyebrow}</span>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({ title, description, action }) {
+  return (
+    <div className="empty-state">
+      <div className="empty-icon">◇</div>
+      <h3>{title}</h3>
+      <p>{description}</p>
+      {action && (
+        <button className="primary-button" onClick={action}>
+          Open 3D Studio
+        </button>
+      )}
+    </div>
   );
 }
 
