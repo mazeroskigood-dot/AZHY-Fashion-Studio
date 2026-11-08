@@ -1,18 +1,127 @@
-import express from 'express';
-import cors from 'cors';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-const __dirname=path.dirname(fileURLToPath(import.meta.url));
-const app=express(); const PORT=process.env.PORT||4000;
-const dataDir=path.join(__dirname,'data'); fs.mkdirSync(dataDir,{recursive:true});
-app.use(cors()); app.use(express.json({limit:'8mb'}));
-function read(name,fallback=[]){const p=path.join(dataDir,name);try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch{return fallback}}
-function write(name,value){fs.writeFileSync(path.join(dataDir,name),JSON.stringify(value,null,2))}
-app.get('/api/health',(req,res)=>res.json({ok:true,app:'AZHY Fashion Studio'}));
-app.get('/api/designs',(req,res)=>res.json(read('designs.json')));
-app.post('/api/designs',(req,res)=>{const list=read('designs.json');const item={...req.body,id:Date.now(),createdAt:new Date().toISOString()};list.unshift(item);write('designs.json',list);res.status(201).json(item)});
-app.delete('/api/designs/:id',(req,res)=>{const list=read('designs.json').filter(x=>String(x.id)!==req.params.id);write('designs.json',list);res.json({ok:true})});
-app.get('/api/orders',(req,res)=>res.json(read('orders.json')));
-app.post('/api/orders',(req,res)=>{const list=read('orders.json');const item={...req.body,id:Date.now(),status:'demo-pending',createdAt:new Date().toISOString()};list.unshift(item);write('orders.json',list);res.status(201).json(item)});
-app.listen(PORT,'0.0.0.0',()=>console.log(`AZHY API running on http://localhost:${PORT}`));
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800&display=swap');
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #25231f;
+  background: #f7f6f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --gold: #c6a15b;
+  --dark: #171714;
+  --cream: #f7f6f2;
+  --text: #25231f;
+  --muted: #89877f;
+  --border: #e9e6df;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--cream);
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: 'DM Sans', sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font-size: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+img {
+  display: block;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-top: 0;
+}
+
+::selection {
+  color: #fff;
+  background: #a9874b;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d3cfc5;
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b7a98e;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
