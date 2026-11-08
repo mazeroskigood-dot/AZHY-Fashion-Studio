@@ -6,7 +6,7 @@ import {
   Environment,
   ContactShadows,
 } from "@react-three/drei";
-import "./App.css";
+import "./Style.css";
 
 const initialProducts = [
   { id: 1, name: "Essential Oversized T-Shirt", category: "T-Shirts", price: 35, color: "#d8cbb5", stock: 42 },
